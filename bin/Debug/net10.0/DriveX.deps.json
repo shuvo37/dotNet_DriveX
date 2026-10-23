@@ -1,0 +1,145 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "DriveX/1.0.0": {
+        "dependencies": {
+          "Microsoft.AspNetCore.OpenApi": "10.0.12",
+          "Microting.EntityFrameworkCore.MySql": "10.0.13"
+        },
+        "runtime": {
+          "DriveX.dll": {}
+        }
+      },
+      "Microsoft.AspNetCore.OpenApi/10.0.12": {
+        "dependencies": {
+          "Microsoft.OpenApi": "2.12.0"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.AspNetCore.OpenApi.dll": {
+            "assemblyVersion": "10.0.12.0",
+            "fileVersion": "10.0.1226.42308"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore/10.0.13": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Abstractions": "10.0.13"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.dll": {
+            "assemblyVersion": "10.0.13.0",
+            "fileVersion": "10.0.1326.50504"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Abstractions/10.0.13": {
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {
+            "assemblyVersion": "10.0.13.0",
+            "fileVersion": "10.0.1326.50504"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Relational/10.0.13": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.13"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll": {
+            "assemblyVersion": "10.0.13.0",
+            "fileVersion": "10.0.1326.50504"
+          }
+        }
+      },
+      "Microsoft.OpenApi/2.12.0": {
+        "runtime": {
+          "lib/net8.0/Microsoft.OpenApi.dll": {
+            "assemblyVersion": "2.12.0.0",
+            "fileVersion": "2.12.0.0"
+          }
+        }
+      },
+      "Microting.EntityFrameworkCore.MySql/10.0.13": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.13",
+          "MySqlConnector": "2.6.2"
+        },
+        "runtime": {
+          "lib/net10.0/Microting.EntityFrameworkCore.MySql.dll": {
+            "assemblyVersion": "10.0.13.0",
+            "fileVersion": "10.0.13.0"
+          }
+        }
+      },
+      "MySqlConnector/2.6.2": {
+        "runtime": {
+          "lib/net10.0/MySqlConnector.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.6.2.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DriveX/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.AspNetCore.OpenApi/10.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7RnQ/UKn+kK3JDLmTpW+vVqNErWthGPAVAy1aIiBzv4ucQ6g9NFvOJUuT0PHcpvcJxGVxctMxj6t+NESWMrgHQ==",
+      "path": "microsoft.aspnetcore.openapi/10.0.12",
+      "hashPath": "microsoft.aspnetcore.openapi.10.0.12.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-u/z4nTQUJ5nJEXAQekgQEQZkh0delp4gL+ESHn7Z6k037c8HC5mSNu1/YdBgxGm7DtLjhOxktNl+aQMzw6wN7A==",
+      "path": "microsoft.entityframeworkcore/10.0.13",
+      "hashPath": "microsoft.entityframeworkcore.10.0.13.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Abstractions/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ARw+tZ3eiTosnK5nJPUGEzeUQcjyqCqs3qKA3lPtIRH5yJo3qIgxm7AvkZVIT9iWkS2083UsWe3Rj1MysW3p5A==",
+      "path": "microsoft.entityframeworkcore.abstractions/10.0.13",
+      "hashPath": "microsoft.entityframeworkcore.abstractions.10.0.13.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Relational/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-QU/sbTtDR5wVAJRVecC1GwM7mwH8bvKOZNm+lulzMr5rhjdb8DDEFIqqdhF08JIo51DPv5uQdZ1nXoZsD5pTag==",
+      "path": "microsoft.entityframeworkcore.relational/10.0.13",
+      "hashPath": "microsoft.entityframeworkcore.relational.10.0.13.nupkg.sha512"
+    },
+    "Microsoft.OpenApi/2.12.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0xB/be+f6qYOhvQPUrVsLrau+fkowYv6gt9RIkajMhwT7sZnqtcA797yW3bS5kgSje+AQW4xZgyLnW641YFioQ==",
+      "path": "microsoft.openapi/2.12.0",
+      "hashPath": "microsoft.openapi.2.12.0.nupkg.sha512"
+    },
+    "Microting.EntityFrameworkCore.MySql/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0+6lEvFdT/AphBChbq0INh3dd0jonXCtIWGMEY/eLDXbwxr6WjkIUtzyNS+pqZi+1GIc9y5IdpWgrRJQ0BNthA==",
+      "path": "microting.entityframeworkcore.mysql/10.0.13",
+      "hashPath": "microting.entityframeworkcore.mysql.10.0.13.nupkg.sha512"
+    },
+    "MySqlConnector/2.6.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dlTc/tsBa42szdvpj4nrHvQVUb0gsMwR9HT6J0Zz2OSqfP0CdYlGw+qQPqCpbnO97idfvclSjKYtM6y5QaBQaQ==",
+      "path": "mysqlconnector/2.6.2",
+      "hashPath": "mysqlconnector.2.6.2.nupkg.sha512"
+    }
+  }
+}
