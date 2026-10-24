@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using DriveX.Constants;
 using DriveX.Data;
 using DriveX.Filters;
@@ -126,11 +127,24 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+builder.Services.AddScoped<ICompanyService, CompanyService>();
+builder.Services.AddScoped<ICarService, CarService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 
 builder.Services
     .AddControllers(options =>
     {
         options.Filters.Add<ApiExceptionFilter>();
+    })
+    .AddJsonOptions(options =>
+    {
+        // Enums travel as text ("PETROL", "AVAILABLE"), like the Spring API.
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+        // React sends numbers from form fields as strings ("50"); Spring accepted that, so we do too.
+        options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
     })
     .ConfigureApiBehaviorOptions(options =>
     {
