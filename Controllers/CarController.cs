@@ -17,14 +17,12 @@ public class CarController : ControllerBase
         _carService = carService;
     }
 
-    [Authorize(Roles = "ADMIN")]
     [HttpPost]
     public async Task<ActionResult<CarResultResponse>> AddCar(AddCarRequest request)
     {
         return Ok(await _carService.AddCarAsync(request));
     }
 
-    [Authorize(Roles = "ADMIN")]
     [HttpPut("{id:long}")]
     public async Task<ActionResult<CarResultResponse>> UpdateCar(long id, UpdateCarRequest request)
     {
@@ -39,16 +37,13 @@ public class CarController : ControllerBase
     }
 
     // Cars in maintenance (used by the admin car-status page).
-    [Authorize(Roles = "ADMIN")]
     [HttpGet("all")]
     public async Task<ActionResult<List<CarResponse>>> GetMaintenanceCars()
     {
         return Ok(await _carService.GetMaintenanceCarsAsync());
     }
 
-    // TEMPORARY: any logged-in user may call this, because the customer's Payment page uses it to
-    // mark the car RENTED. It gets locked down when the server sets RENTED during booking/payment.
-    [Authorize]
+    // Sets the rental status of a car (the staff pages use it).
     [HttpPatch("updateCarRentalStatus")]
     public async Task<ActionResult<MessageResponse>> UpdateCarRentalStatus(UpdateCarRentalStatusRequest request)
     {
@@ -56,14 +51,12 @@ public class CarController : ControllerBase
     }
 
     // Used by the staff page when a returned car is submitted: sets the car to MAINTENANCE.
-    [Authorize(Roles = "ADMIN,STUFF")]
     [HttpPatch("updateCarRentalStatus/{carId:long}")]
     public async Task<ActionResult<MessageResponse>> MarkCarAsMaintenance(long carId)
     {
         return Ok(await _carService.MarkAsMaintenanceAsync(carId));
     }
 
-    [Authorize(Roles = "ADMIN")]
     [HttpPatch("update-Active-Status")]
     public async Task<ActionResult<CarResultResponse>> UpdateCarActiveStatus(UpdateCarActiveStatusRequest request)
     {

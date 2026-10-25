@@ -2,6 +2,7 @@ using DriveX.Data;
 using DriveX.DTOs.Auth;
 using DriveX.Enums;
 using DriveX.Exceptions;
+using DriveX.Mapping;
 using DriveX.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -132,6 +133,45 @@ public class AuthService : IAuthService
         }
 
         return new GoogleLoginResult(_jwtService.GenerateToken(user), user.IsProfileComplete);
+    }
+
+    // Same as Spring's get-user-by-email, but returns a UserResponse (no password hash).
+    public async Task<UserResponse> GetByEmailAsync(string email)
+    {
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email)
+                   ?? throw new AppException("User not found");
+
+        return user.ToResponse();
+    }
+
+    // Same as Spring's role-update, but returns a UserResponse (no password hash).
+    public async Task<UserResponse> UpdateRoleAsync(string email, string role)
+    {
+        // Spring used Role.valueOf(role): exact names only (ADMIN, USER, STUFF).
+        if (!Enum.TryParse<Role>(role, ignoreCase: false, out var newRole) || !Enum.IsDefined(newRole))
+        {
+            throw new AppException("Invalid role");
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email)
+                   ?? throw new AppException("User not found");
+
+        user.Role = newRole;
+        await _db.SaveChangesAsync();
+
+        return user.ToResponse();
+    }
+
+    // Same as Spring's upload-image: stores the Cloudinary URL on the user.
+    public async Task<UserResponse> UpdateProfileImageAsync(string imageUrl, string email)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email)
+                   ?? throw new AppException("User not found");
+
+        user.ProfileImage = imageUrl;
+        await _db.SaveChangesAsync();
+
+        return user.ToResponse();
     }
 
     // Shared by login and complete-profile, so both return exactly the same shape.

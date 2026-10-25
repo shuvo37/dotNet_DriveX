@@ -8,4 +8,7 @@ public interface IAuthService
     Task<RegisterResponse> RegisterAsync(RegisterRequest request);
     Task<LoginResponse> CompleteProfileAsync(CompleteProfileRequest request, string email);
     Task<GoogleLoginResult> GoogleLoginAsync(GoogleProfile profile);
+    Task<UserResponse> GetByEmailAsync(string email);
+    Task<UserResponse> UpdateRoleAsync(string email, string role);
+    Task<UserResponse> UpdateProfileImageAsync(string imageUrl, string email);
 }

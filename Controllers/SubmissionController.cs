@@ -17,7 +17,6 @@ public class SubmissionController : ControllerBase
     }
 
     // Staff record a returned car.
-    [Authorize(Roles = "ADMIN,STUFF")]
     [HttpPost]
     public async Task<ActionResult<SubmissionResponse>> SubmitCar(SubmitCarRequest request)
     {

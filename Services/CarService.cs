@@ -4,6 +4,7 @@ using DriveX.DTOs.Cars;
 using DriveX.DTOs.Companies;
 using DriveX.Enums;
 using DriveX.Exceptions;
+using DriveX.Mapping;
 using DriveX.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -56,7 +57,7 @@ public class CarService : ICarService
             throw new AppException("Car already exists");
         }
 
-        return new CarResultResponse("Car added successfully", ToResponse(car));
+        return new CarResultResponse("Car added successfully", car.ToResponse());
     }
 
     public async Task<CarResultResponse> UpdateCarAsync(long carId, UpdateCarRequest request)
@@ -73,7 +74,7 @@ public class CarService : ICarService
 
         await _db.SaveChangesAsync();
 
-        return new CarResultResponse("Car updated successfully", ToResponse(car));
+        return new CarResultResponse("Car updated successfully", car.ToResponse());
     }
 
     // Customers only see active cars of active companies (same as Spring).
@@ -86,7 +87,7 @@ public class CarService : ICarService
             .OrderBy(c => c.CarId)
             .ToListAsync();
 
-        return cars.Select(ToResponse).ToList();
+        return cars.Select(x => x.ToResponse()).ToList();
     }
 
     // Cars that are in maintenance, active or not. The admin "car active status" page lists these.
@@ -99,7 +100,7 @@ public class CarService : ICarService
             .OrderBy(c => c.CarId)
             .ToListAsync();
 
-        return cars.Select(ToResponse).ToList();
+        return cars.Select(x => x.ToResponse()).ToList();
     }
 
     public async Task<MessageResponse> UpdateRentalStatusAsync(UpdateCarRentalStatusRequest request)
@@ -138,28 +139,9 @@ public class CarService : ICarService
         car.IsActive = request.IsActive!.Value;
         await _db.SaveChangesAsync();
 
-        return new CarResultResponse("Car updated successfully", ToResponse(car));
+        return new CarResultResponse("Car updated successfully", car.ToResponse());
     }
 
     private static string? CleanTag(string? tag) =>
         string.IsNullOrWhiteSpace(tag) ? null : tag.Trim();
-
-    private static CarResponse ToResponse(Car c) => new(
-        c.CarId,
-        new CompanyResponse(
-            c.Company.CompanyId,
-            c.Company.CompanyName,
-            c.Company.CompanyEmail,
-            c.Company.CompanyPhoneNumber,
-            c.Company.CompanyCity,
-            c.Company.CompanyAddress,
-            c.Company.IsActive),
-        c.ModelName,
-        c.PricePerHour,
-        c.RentalStatus,
-        c.Seats,
-        c.Fuel,
-        c.ImageUrl,
-        c.Tag,
-        c.IsActive);
 }

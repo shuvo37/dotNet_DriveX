@@ -286,4 +286,20 @@ public class BookingService : IBookingService
 
         return booking.ToResponse();
     }
+
+    // Admin search page: the running booking of the car with this model name.
+    // Model names are unique, so at most one car matches. Nothing found is not an error here:
+    // the page shows its "No Bookings Found" screen, so this returns null instead of throwing.
+    public async Task<BookingResponse?> SearchOngoingBookingByModelAsync(string modelName)
+    {
+        var cleanName = modelName.Trim();
+
+        var booking = await BookingsWithRelations()
+            .AsNoTracking()
+            .Where(b => b.Car.ModelName == cleanName && b.BookingStatus == BookingStatus.ONGOING)
+            .OrderBy(b => b.BookingId)
+            .FirstOrDefaultAsync();
+
+        return booking?.ToResponse();
+    }
 }

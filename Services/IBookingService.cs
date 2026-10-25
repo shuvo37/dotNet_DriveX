@@ -14,4 +14,5 @@ public interface IBookingService
     Task<List<CarResponse>> GetOngoingCarsAsync();
     Task<BookingResponse> GetOngoingBookingOfCarAsync(long carId);
     Task<BookingResponse> MarkSubmittedAsync(long bookingId);
+    Task<BookingResponse?> SearchOngoingBookingByModelAsync(string modelName);
 }

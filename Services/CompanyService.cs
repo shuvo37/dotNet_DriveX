@@ -2,6 +2,7 @@ using DriveX.Data;
 using DriveX.DTOs.Companies;
 using DriveX.Enums;
 using DriveX.Exceptions;
+using DriveX.Mapping;
 using DriveX.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,7 +45,7 @@ public class CompanyService : ICompanyService
         _db.Companies.Add(company);
         await SaveAsync();
 
-        return new CompanyResultResponse("Successfully added new company", ToResponse(company));
+        return new CompanyResultResponse("Successfully added new company", company.ToResponse());
     }
 
     // Customers only see active companies (same as Spring).
@@ -56,7 +57,7 @@ public class CompanyService : ICompanyService
             .OrderBy(c => c.CompanyId)
             .ToListAsync();
 
-        return companies.Select(ToResponse).ToList();
+        return companies.Select(x => x.ToResponse()).ToList();
     }
 
     // Companies that have no car that is RENTED or AVAILABLE (so every car is in maintenance,
@@ -71,7 +72,7 @@ public class CompanyService : ICompanyService
             .OrderBy(c => c.CompanyId)
             .ToListAsync();
 
-        return companies.Select(ToResponse).ToList();
+        return companies.Select(x => x.ToResponse()).ToList();
     }
 
     public async Task<CompanyResultResponse> UpdateCompanyAsync(long companyId, UpdateCompanyRequest request)
@@ -101,7 +102,7 @@ public class CompanyService : ICompanyService
 
         await SaveAsync();
 
-        return new CompanyResultResponse("Successfully updated company", ToResponse(company));
+        return new CompanyResultResponse("Successfully updated company", company.ToResponse());
     }
 
     // The React page identifies the company by name, as it did with Spring.
@@ -115,7 +116,7 @@ public class CompanyService : ICompanyService
         company.IsActive = request.IsActive!.Value;
         await _db.SaveChangesAsync();
 
-        return new CompanyResultResponse("Successfully updated company", ToResponse(company));
+        return new CompanyResultResponse("Successfully updated company", company.ToResponse());
     }
 
     // The database has unique indexes on name and email. If two admins save the same name at the
@@ -131,13 +132,4 @@ public class CompanyService : ICompanyService
             throw new AppException("Company name or email already exists");
         }
     }
-
-    private static CompanyResponse ToResponse(Company c) => new(
-        c.CompanyId,
-        c.CompanyName,
-        c.CompanyEmail,
-        c.CompanyPhoneNumber,
-        c.CompanyCity,
-        c.CompanyAddress,
-        c.IsActive);
 }

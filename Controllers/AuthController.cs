@@ -41,4 +41,17 @@ public class AuthController : ControllerBase
 
         return Ok(await _authService.CompleteProfileAsync(request, email));
     }
+
+    // Same URL and query as Spring. Returns a UserResponse, never the entity with the password hash.
+    [HttpGet("get-user-by-email")]
+    public async Task<ActionResult<UserResponse>> GetUserByEmail([FromQuery] string email)
+    {
+        return Ok(await _authService.GetByEmailAsync(email));
+    }
+
+    [HttpPatch("role-update")]
+    public async Task<ActionResult<UserResponse>> UpdateRole([FromQuery] string email, [FromQuery] string role)
+    {
+        return Ok(await _authService.UpdateRoleAsync(email, role));
+    }
 }

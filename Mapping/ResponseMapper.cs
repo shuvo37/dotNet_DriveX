@@ -1,3 +1,4 @@
+using DriveX.DTOs.Auth;
 using DriveX.DTOs.Bookings;
 using DriveX.DTOs.Cars;
 using DriveX.DTOs.Companies;
@@ -10,6 +11,18 @@ namespace DriveX.Mapping;
 // to be loaded already (Include), for example Car needs its Company.
 public static class ResponseMapper
 {
+    public static UserResponse ToResponse(this User u) => new(
+        u.UserId,
+        u.FirstName,
+        u.LastName,
+        u.Email,
+        u.PhoneNumber,
+        u.DateOfBirth,
+        u.ProfileImage,
+        u.CreatedAt,
+        u.Role,
+        u.IsProfileComplete);
+
     public static CompanyResponse ToResponse(this Company c) => new(
         c.CompanyId,
         c.CompanyName,

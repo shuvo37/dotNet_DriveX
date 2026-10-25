@@ -17,8 +17,9 @@ public class PaymentController : ControllerBase
         _paymentService = paymentService;
     }
 
-    // USER pays a rental price; ADMIN or STUFF record a fine. The service enforces which is which.
-    [Authorize(Roles = "USER,ADMIN,STUFF")]
+    // Records a payment. The caller comes from the token: a customer pays their own rental price,
+    // staff record a fine for the customer in the request. The service handles which is which.
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<PaymentResultResponse>> CreatePayment(CreatePaymentRequest request)
     {
