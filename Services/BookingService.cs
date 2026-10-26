@@ -46,6 +46,8 @@ public class BookingService : IBookingService
             throw new AppException("Car is not available");
         }
 
+        CityRule.EnsureCustomerIsInCarCity(request.City, car.Company.CompanyCity);
+
         var payment = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.PaymentId == paymentId)
                       ?? throw new AppException($"Payment {paymentId} not found");
 

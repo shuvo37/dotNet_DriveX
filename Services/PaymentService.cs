@@ -57,6 +57,12 @@ public class PaymentService : IPaymentService
                       .FirstOrDefaultAsync(c => c.CarId == carId)
                   ?? throw new AppException($"Car {carId} not found");
 
+        // Checked before any payment is saved, so a wrong-city order never leaves an orphan payment.
+        if (paymentType == PaymentType.RENTED_PRICE)
+        {
+            CityRule.EnsureCustomerIsInCarCity(request.City, car.Company.CompanyCity);
+        }
+
         // Stops a customer from paying for a car that can not be booked (saves an orphan payment).
         if (paymentType == PaymentType.RENTED_PRICE &&
             (!car.IsActive || !car.Company.IsActive || car.RentalStatus != RentalStatus.AVAILABLE))
