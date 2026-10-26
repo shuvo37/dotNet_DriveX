@@ -136,6 +136,11 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 
+builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
+builder.Services.AddHttpClient<IAiAssistantService, GeminiAssistantService>(c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddScoped<AnalystTools>();
+builder.Services.AddHttpClient<IAiAnalystService, AiAnalystService>(c => c.Timeout = TimeSpan.FromSeconds(60));
+
 builder.Services
     .AddControllers(options =>
     {
