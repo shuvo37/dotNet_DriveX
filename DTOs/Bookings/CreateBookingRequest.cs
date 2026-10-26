@@ -37,4 +37,7 @@ public class CreateBookingRequest
     [Required(ErrorMessage = "phone must not be blank")]
     [RegularExpression(@"^01[0-9]{9}$", ErrorMessage = "Invalid phone number")]
     public string Phone { get; set; } = string.Empty;
+
+    // The city the customer picked on the booking page. It has to match the car's city.
+    public string? City { get; set; }
 }

@@ -25,4 +25,8 @@ public class CreatePaymentRequest
     [Required(ErrorMessage = "totalAmount is required")]
     [Range(0.01, double.MaxValue, ErrorMessage = "totalAmount must be positive")]
     public double? TotalAmount { get; set; }
+
+    // The city the customer picked on the booking page. Checked against the car's city for
+    // rental payments (RENTED_PRICE). Staff fine payments do not need it.
+    public string? City { get; set; }
 }
