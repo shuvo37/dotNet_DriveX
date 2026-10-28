@@ -21,6 +21,9 @@
 - [Features](#features)
 - [AI Features](#ai-features)
 - [Screenshots](#screenshots)
+  - [USER (customer)](#screenshots-user-customer)
+  - [STUFF (company staff)](#screenshots-stuff-company-staff)
+  - [ADMIN](#screenshots-admin)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -84,7 +87,7 @@ The tools return business data only. Customer personal data is never sent to the
 
 Screenshots are grouped by role and follow the order a person uses the app.
 
-### USER (customer)
+### Screenshots: USER (customer)
 
 **1. Browse cars.** Search and filter by price, brand, city and fuel type, then sort the results.
 
@@ -102,13 +105,29 @@ Screenshots are grouped by role and follow the order a person uses the app.
 
 <img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/20261028_160021-COLLAGE.jpg" alt="AI assistant and booking history" width="420">
 
-### STUFF (company staff)
+### Screenshots: STUFF (company staff)
 
-<!-- PLACEHOLDER: staff screenshots in order of use: 1) bookings waiting for delivery, 2) start rental, 3) end rental / receive the car, 4) submit the returned car (with late fine). Add each like: <img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/FILE.png" alt="..." width="700"> -->
+**1. Hand over the car.** Staff search the car model and see the customer, phone, address, booked hours, price and status (`NOT_DELIVERED`). Switching on "Handed Over" starts the rental timer.
 
-### ADMIN
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Photos-1-001%20%281%29/Screenshot%202026-10-28%20170534.png" alt="Hand over the car and start the timer" width="700">
 
-<!-- PLACEHOLDER: admin screenshots in order of use: 1) admin dashboard, 2) add company / add car, 3) update car and active status, 4) search bookings by car, 5) role update, 6) AI analyst -->
+**2. Process a return.** Staff search the booking by car model and review the return (top). Then they confirm the fine collected in cash and choose how to send it to the company, bKash or Nagad (bottom, simulated in testing mode).
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Photos-1-001%20%281%29/20261028_165454-COLLAGE.jpg" alt="Search the booking and confirm the cash collected" width="420">
+
+**3. Submission receipt.** The receipt shows when the car had to be returned, when it came back, how late it was, and the fine. A clearance email is sent to the customer.
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Photos-1-001%20%281%29/Screenshot%202026-10-28%20162211.png" alt="Car submission receipt with late fine" width="340">
+
+### Screenshots: ADMIN
+
+**1. Admin dashboard.** The sidebar groups Company and Car Management (add, update, delete). The top bar links to ongoing cars, role updates and the AI analyst. This screen shows the "Add New Company" form.
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Photos-1-001%20%282%29/Screenshot%202026-10-28%20152706.png" alt="Admin dashboard, add company" width="800">
+
+**2. AI analyst.** The admin asks a business question in plain language. The analyst reads live data with a read-only tool (here `get_revenue`) and answers. It cannot change anything.
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Photos-1-001%20%282%29/Screenshot%202026-10-28%20152943.png" alt="Admin AI analyst" width="650">
 
 ---
 
