@@ -295,12 +295,20 @@ Protected endpoints expect the header `Authorization: Bearer <token>`.
 
 ## Design Decisions
 
-- **DTOs instead of entities.** API responses use DTOs, so sensitive fields such as the password hash never leave the server.
-- **The server is the source of truth.** Booking and payment amounts are checked on the backend against the car's real rate, so a modified browser request cannot change a price.
-- **Secrets stay out of Git.** Keys and passwords live in user-secrets or environment variables, never in `appsettings.json`.
-- **Migrations instead of hand-made SQL.** The database schema is versioned with EF Core migrations, so a new developer builds the same tables with one command.
-- **AI with guardrails.** The analyst is limited to five read-only tools and does not send personal data to the model. Gemini calls have a retry, a fallback model, and a friendly failure message.
-- **Password reset with limits.** The emailed 4-digit code allows at most 5 wrong attempts.
+### The server never trusts the browser
+
+The React app already checks forms before sending them, but a browser request can be edited or replayed with any tool. So every business rule that protects money or availability is enforced again in the backend, and the frontend checks are only there for a smoother experience.
+
+What the API verifies on every booking:
+
+- **City rule.** A customer can only rent a car in the city where its company is based. A request with a different city is rejected ("This car is only available in Barisal").
+- **Price.** The booking price must match the car's real hourly rate, and the total hours must match the days and hours sent.
+- **Payment.** The payment amount must match the booking price, the payment must belong to that booking, and one payment can never be used for a second booking.
+- **Availability.** A car that is not available cannot be booked, even if the page was left open from earlier.
+- **Identity.** The customer comes from the login token, never from the request body, so user 5 cannot pay or book as user 7.
+- **Fines.** Customers can only create rental payments. Only staff or admins can record a late-return fine.
+
+*Trade-off:* each rule exists twice (once in React, once in C#), which is more code to keep in sync. I accepted that, because the server copy is the one that protects the data.
 
 ---
 
