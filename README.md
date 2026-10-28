@@ -82,16 +82,33 @@ The tools return business data only. Customer personal data is never sent to the
 
 ## Screenshots
 
-<!-- PLACEHOLDER: add one screenshot per item below, saved in a docs/ folder, then replace each comment with an image line like: ![Home page](docs/home.png) -->
+Screenshots are grouped by role and follow the order a person uses the app.
 
-| Screen | Image |
-|---|---|
-| Home / car browsing | <!-- PLACEHOLDER --> |
-| Car details and booking | <!-- PLACEHOLDER --> |
-| Customer AI assistant | <!-- PLACEHOLDER --> |
-| Staff dashboard (start / end rental) | <!-- PLACEHOLDER --> |
-| Admin dashboard | <!-- PLACEHOLDER --> |
-| Admin AI analyst | <!-- PLACEHOLDER --> |
+### USER (customer)
+
+**1. Browse cars.** Search and filter by price, brand, city and fuel type, then sort the results.
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Screenshot%202026-10-28%20151348.png" alt="Browse cars" width="800">
+
+**2. Book a car.** Step 1 collects the rental duration, city, pickup address and phone. Step 2 shows the booking summary and the payment method (bKash or Nagad, simulated in testing mode).
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/20261028_160241-COLLAGE.jpg" alt="Booking details and payment" width="700">
+
+**3. Booking receipt.** After payment, the user gets a confirmation and a downloadable receipt.
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/Screenshot%202026-10-28%20154847.png" alt="Booking receipt" width="320">
+
+**4. AI assistant and booking history.** The assistant answers from the live car data (top). The profile page lists past and active bookings (bottom).
+
+<img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/20261028_160021-COLLAGE.jpg" alt="AI assistant and booking history" width="420">
+
+### STUFF (company staff)
+
+<!-- PLACEHOLDER: staff screenshots in order of use: 1) bookings waiting for delivery, 2) start rental, 3) end rental / receive the car, 4) submit the returned car (with late fine). Add each like: <img src="https://raw.githubusercontent.com/shuvo37/drivex-assets/main/FILE.png" alt="..." width="700"> -->
+
+### ADMIN
+
+<!-- PLACEHOLDER: admin screenshots in order of use: 1) admin dashboard, 2) add company / add car, 3) update car and active status, 4) search bookings by car, 5) role update, 6) AI analyst -->
 
 ---
 
