@@ -46,7 +46,7 @@ DriveX has three roles, each with its own dashboard.
 - See bookings waiting to be delivered
 - Start a rental when the customer picks the car up
 - End a rental and receive the car back
-- Mark a returned car as submitted; late returns are fined per complete late hour
+- late returns are fined per complete late hour
 
 **ADMIN**
 - Add and update companies and cars
