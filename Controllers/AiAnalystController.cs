@@ -21,6 +21,6 @@ public class AiAnalystController : ControllerBase
     [HttpPost("analyst")]
     public async Task<ActionResult<AnalystResponse>> Ask(AskRequest request)
     {
-        return Ok(await _analyst.AskAsync(request.Question));
+        return Ok(await _analyst.AskAsync(request.Question, request.History));
     }
 }
