@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DriveX")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dbb5b076f3bcb0558a1b48678212f7650c15c6ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3a239931b0684880652a00ce24b0721d71545a86")]
 [assembly: System.Reflection.AssemblyProductAttribute("DriveX")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DriveX")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

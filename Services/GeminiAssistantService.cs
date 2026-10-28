@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using DriveX.DTOs.Ai;
 using DriveX.DTOs.Cars;
 using DriveX.Exceptions;
 using DriveX.Options;
@@ -27,7 +28,7 @@ public class GeminiAssistantService : IAiAssistantService
         _logger = logger;
     }
 
-    public async Task<string> AskAsync(string question)
+    public async Task<string> AskAsync(string question, IEnumerable<ChatMessage>? history = null)
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
@@ -37,13 +38,19 @@ public class GeminiAssistantService : IAiAssistantService
         // The same public data as GET /api/car: active cars of active companies. Nothing about users.
         var cars = await _carService.GetActiveCarsAsync();
 
+        // Up to the last 10 earlier messages (5 questions + 5 answers), then the new question.
+        var contents = new List<object>();
+        foreach (var (role, text) in ChatHistory.Clean(history, maxMessages: 10, maxChars: 1000))
+        {
+            contents.Add(new { role, parts = new[] { new { text } } });
+        }
+
+        contents.Add(new { role = "user", parts = new[] { new { text = question.Trim() } } });
+
         var body = new
         {
             systemInstruction = new { parts = new[] { new { text = BuildInstructions(cars) } } },
-            contents = new[]
-            {
-                new { role = "user", parts = new[] { new { text = question.Trim() } } }
-            },
+            contents,
             generationConfig = new { temperature = 0.3, maxOutputTokens = 2048 }
         };
 
@@ -98,6 +105,7 @@ public class GeminiAssistantService : IAiAssistantService
         sb.AppendLine("- You cannot book cars yourself. To rent a car, the customer picks it on the Cars page and pays there.");
         sb.AppendLine("- Only talk about renting cars on DriveX. Politely refuse anything else.");
         sb.AppendLine("- Keep answers short and in plain text, with no markdown symbols.");
+        sb.AppendLine("- Earlier messages of this conversation are included. Use them to understand follow-ups such as \"it\", \"that car\" or \"and the cheaper one?\".");
         sb.AppendLine();
         sb.AppendLine("How DriveX works (use this for questions about booking, paying, returning and fines):");
         sb.AppendLine("1. A customer logs in, opens the Cars page and presses Book Now on an available car.");

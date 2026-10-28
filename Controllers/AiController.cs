@@ -19,6 +19,6 @@ public class AiController : ControllerBase
     [HttpPost("ask")]
     public async Task<ActionResult<AskResponse>> Ask(AskRequest request)
     {
-        return Ok(new AskResponse(await _assistant.AskAsync(request.Question)));
+        return Ok(new AskResponse(await _assistant.AskAsync(request.Question, request.History)));
     }
 }

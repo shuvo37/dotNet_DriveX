@@ -32,22 +32,31 @@ public class AiAnalystService : IAiAnalystService
         _logger = logger;
     }
 
-    public async Task<AnalystResponse> AskAsync(string question)
+    public async Task<AnalystResponse> AskAsync(string question, IEnumerable<ChatMessage>? history = null)
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
             throw new AppException("The AI assistant is not set up yet");
         }
 
-        // The conversation so far: the question, then (tool request, tool result) pairs.
-        var contents = new JsonArray
+        // The conversation so far: up to the last 6 earlier messages (3 questions + 3 answers) as plain text,
+        // then the new question. Later, (tool request, tool result) pairs are added to it.
+        var contents = new JsonArray();
+
+        foreach (var (role, text) in ChatHistory.Clean(history, maxMessages: 6, maxChars: 4000))
         {
-            new JsonObject
+            contents.Add(new JsonObject
             {
-                ["role"] = "user",
-                ["parts"] = new JsonArray(new JsonObject { ["text"] = question.Trim() })
-            }
-        };
+                ["role"] = role,
+                ["parts"] = new JsonArray(new JsonObject { ["text"] = text })
+            });
+        }
+
+        contents.Add(new JsonObject
+        {
+            ["role"] = "user",
+            ["parts"] = new JsonArray(new JsonObject { ["text"] = question.Trim() })
+        });
 
         var toolsUsed = new List<string>();
 
@@ -176,6 +185,7 @@ public class AiAnalystService : IAiAnalystService
         sb.AppendLine("- End with a clear recommendation or decision when the question asks for one. Say how sure you are and what data would change your mind.");
         sb.AppendLine("- You cannot change anything. You only recommend. Tell the admin which action to take and where (for example the admin pages to update a car or its status).");
         sb.AppendLine("- You have no customer names, emails or phone numbers, and you must not ask for them.");
+        sb.AppendLine("- Earlier messages of this conversation are included as plain text, so follow-ups like \"and last month?\" make sense. They do not contain the data tables, so call the tools again whenever you need numbers.");
         sb.AppendLine("- Only talk about running DriveX. Politely refuse anything else.");
         sb.AppendLine("- Write plain text. Use short paragraphs and simple numbered lines. Do not use markdown symbols such as ** or #.");
         sb.AppendLine();
