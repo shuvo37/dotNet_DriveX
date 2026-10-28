@@ -1,6 +1,6 @@
 # DriveX
 
-**A full-stack car rental platform with role-based dashboards and built-in AI: a customer assistant that answers from your live fleet, and an admin analyst that queries real business data.**
+**DriveX is a full-stack car-rental platform that enables multiple rental companies to manage and rent out their vehicles. Users book cars, company staff hand them over and start the rental timer, triggering an email confirmation. When users return the cars, staff submit them, apply any applicable late-return fine, and send a return-confirmation email.**
 
 > This README is shared by both repositories. Run the two parts together for the full app.
 >
