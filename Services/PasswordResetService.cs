@@ -1,10 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
-using DriveX.Data;
 using DriveX.DTOs.PasswordReset;
 using DriveX.Exceptions;
 using DriveX.Models;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace DriveX.Services;
@@ -19,18 +18,21 @@ public class PasswordResetService : IPasswordResetService
     private const int MaxVerifyAttempts = 5;                 // wrong guesses allowed per code
     private const int BcryptWorkFactor = 10;
 
-    private readonly DriveXDbContext _db;
+    private readonly IUserRepository _users;
+    private readonly IConfirmationCodeRepository _codes;
     private readonly IEmailService _emailService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<PasswordResetService> _logger;
 
     public PasswordResetService(
-        DriveXDbContext db,
+        IUserRepository users,
+        IConfirmationCodeRepository codes,
         IEmailService emailService,
         IMemoryCache cache,
         ILogger<PasswordResetService> logger)
     {
-        _db = db;
+        _users = users;
+        _codes = codes;
         _emailService = emailService;
         _cache = cache;
         _logger = logger;
@@ -38,7 +40,7 @@ public class PasswordResetService : IPasswordResetService
 
     public async Task<ForgotPasswordResponse> CheckEmailAsync(string email)
     {
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _users.GetDetailsByEmailAsync(email);
 
         if (user is null)
         {
@@ -63,15 +65,12 @@ public class PasswordResetService : IPasswordResetService
 
     public async Task<bool> VerifyCodeAsync(string email, string code)
     {
-        if (!await _db.Users.AnyAsync(u => u.Email == email))
+        if (!await _users.ExistsByEmailAsync(email))
         {
             throw new AppException("User not found");
         }
 
-        var latest = await _db.ConfirmationCodes
-            .Where(c => c.Email == email && c.IsUsed == false)
-            .OrderByDescending(c => c.CreatedAt)
-            .FirstOrDefaultAsync()
+        var latest = await _codes.GetLatestUnusedAsync(email)
             ?? throw new AppException("Confirmation code doesn't exist");
 
         if (latest.ExpiresAt < NowMillis())
@@ -95,7 +94,7 @@ public class PasswordResetService : IPasswordResetService
         }
 
         latest.IsUsed = true; // "used" means verified: this code may now be exchanged for a new password
-        await _db.SaveChangesAsync();
+        await _codes.UpdateAsync(latest);
         _cache.Remove(attemptsKey);
         return true;
     }
@@ -118,10 +117,7 @@ public class PasswordResetService : IPasswordResetService
     {
         var user = await GetResettableUserAsync(email);
 
-        var verified = await _db.ConfirmationCodes
-            .Where(c => c.Email == email && c.IsUsed == true)
-            .OrderByDescending(c => c.CreatedAt)
-            .FirstOrDefaultAsync()
+        var verified = await _codes.GetLatestUsedAsync(email)
             ?? throw new AppException("Confirmation code not found");
 
         if (!CodesMatch(verified.Code, code))
@@ -136,16 +132,16 @@ public class PasswordResetService : IPasswordResetService
         }
 
         user.Password = BCrypt.Net.BCrypt.HashPassword(newPassword, BcryptWorkFactor);
-        await _db.SaveChangesAsync();
+        await _users.UpdateAsync(user);
 
         // Single use: remove this email's codes so the same code can never reset the password again.
-        await _db.ConfirmationCodes.Where(c => c.Email == email).ExecuteDeleteAsync();
+        await _codes.DeleteAllByEmailAsync(email);
     }
 
     // A user who exists and has a password (Google-only accounts are refused).
     private async Task<User> GetResettableUserAsync(string email)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email)
+        var user = await _users.GetByEmailAsync(email)
             ?? throw new AppException("User not found");
 
         if (string.IsNullOrEmpty(user.Password))
@@ -159,11 +155,7 @@ public class PasswordResetService : IPasswordResetService
     // Returns when the user may request codes again, or null if they are not blocked.
     private async Task<long?> GetBlockedUntilAsync(string email)
     {
-        var recent = await _db.ConfirmationCodes.AsNoTracking()
-            .Where(c => c.Email == email && c.IsUsed == false)
-            .OrderByDescending(c => c.CreatedAt)
-            .Take(MaxCodesPerWindow)
-            .ToListAsync();
+        var recent = await _codes.GetRecentUnusedAsync(email, MaxCodesPerWindow);
 
         if (recent.Count < MaxCodesPerWindow)
         {
@@ -191,8 +183,7 @@ public class PasswordResetService : IPasswordResetService
             IsUsed = false
         };
 
-        _db.ConfirmationCodes.Add(entity);
-        await _db.SaveChangesAsync();
+        await _codes.AddAsync(entity);
         _cache.Remove(AttemptsKey(user.Email)); // a fresh code starts with a fresh attempt counter
 
         try
@@ -208,8 +199,7 @@ public class PasswordResetService : IPasswordResetService
             _logger.LogError(ex, "Could not send the confirmation code email");
 
             // Remove the unsent code so it doesn't count toward the 5-code limit.
-            _db.ConfirmationCodes.Remove(entity);
-            await _db.SaveChangesAsync();
+            await _codes.DeleteAsync(entity);
 
             throw new AppException("We couldn't send the email. Please try again later.");
         }

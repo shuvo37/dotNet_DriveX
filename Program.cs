@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication;
+using DriveX.Repositories;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -150,6 +152,17 @@ builder.Services.AddHttpClient<ISslCommerzClient, SslCommerzClient>(c => c.Timeo
 
 // Marks payments that were started but never finished as FAILED.
 builder.Services.AddHostedService<PendingPaymentCleanupService>();
+
+builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
+builder.Services.AddScoped<ICarRepository, CarRepository>();
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IConfirmationCodeRepository, ConfirmationCodeRepository>();
+
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+
 
 builder.Services
     .AddControllers(options =>

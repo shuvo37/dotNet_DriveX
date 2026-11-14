@@ -1,10 +1,9 @@
-using DriveX.Data;
 using DriveX.DTOs.Auth;
 using DriveX.Enums;
 using DriveX.Exceptions;
 using DriveX.Mapping;
 using DriveX.Models;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 
 namespace DriveX.Services;
 
@@ -16,19 +15,18 @@ public class AuthService : IAuthService
     // Same strength as Spring's default BCryptPasswordEncoder.
     private const int BcryptWorkFactor = 10;
 
-    private readonly DriveXDbContext _db;
+    private readonly IUserRepository _users;
     private readonly IJwtService _jwtService;
 
-    public AuthService(DriveXDbContext db, IJwtService jwtService)
+    public AuthService(IUserRepository users, IJwtService jwtService)
     {
-        _db = db;
+        _users = users;
         _jwtService = jwtService;
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _db.Users.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _users.GetDetailsByEmailAsync(request.Email);
 
         // Google-only accounts have an empty password, so they can never pass this check.
         // The same message for every failure avoids revealing which emails exist.
@@ -71,7 +69,7 @@ public class AuthService : IAuthService
         // Spring deleted an existing account with an empty password and let the new
         // registration take its place. Anyone could use that to hijack a Google
         // account by registering its email, so here an existing email is always refused.
-        if (await _db.Users.AnyAsync(u => u.Email == request.Email))
+        if (await _users.ExistsByEmailAsync(request.Email))
         {
             throw new AppException("Email already exists");
         }
@@ -90,27 +88,26 @@ public class AuthService : IAuthService
             IsProfileComplete = true
         };
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        await _users.AddAsync(user);
 
         return new RegisterResponse("Account created successfully", user.UserId);
     }
 
     public async Task<LoginResponse> CompleteProfileAsync(CompleteProfileRequest request, string email)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email)
+        var user = await _users.GetByEmailAsync(email)
             ?? throw new AppException("User not found");
 
         user.PhoneNumber = request.PhoneNumber;
         user.IsProfileComplete = true;
-        await _db.SaveChangesAsync();
+        await _users.UpdateAsync(user);
 
         return BuildLoginResponse(user);
     }
 
     public async Task<GoogleLoginResult> GoogleLoginAsync(GoogleProfile profile)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == profile.Email);
+        var user = await _users.GetByEmailAsync(profile.Email);
 
         if (user is null)
         {
@@ -128,8 +125,7 @@ public class AuthService : IAuthService
                 IsProfileComplete = false
             };
 
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+            await _users.AddAsync(user);
         }
 
         return new GoogleLoginResult(_jwtService.GenerateToken(user), user.IsProfileComplete);
@@ -138,7 +134,7 @@ public class AuthService : IAuthService
     // Same as Spring's get-user-by-email, but returns a UserResponse (no password hash).
     public async Task<UserResponse> GetByEmailAsync(string email)
     {
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email)
+        var user = await _users.GetDetailsByEmailAsync(email)
                    ?? throw new AppException("User not found");
 
         return user.ToResponse();
@@ -153,11 +149,11 @@ public class AuthService : IAuthService
             throw new AppException("Invalid role");
         }
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email)
+        var user = await _users.GetByEmailAsync(email)
                    ?? throw new AppException("User not found");
 
         user.Role = newRole;
-        await _db.SaveChangesAsync();
+        await _users.UpdateAsync(user);
 
         return user.ToResponse();
     }
@@ -165,11 +161,11 @@ public class AuthService : IAuthService
     // Same as Spring's upload-image: stores the Cloudinary URL on the user.
     public async Task<UserResponse> UpdateProfileImageAsync(string imageUrl, string email)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email)
+        var user = await _users.GetByEmailAsync(email)
                    ?? throw new AppException("User not found");
 
         user.ProfileImage = imageUrl;
-        await _db.SaveChangesAsync();
+        await _users.UpdateAsync(user);
 
         return user.ToResponse();
     }

@@ -1,22 +1,22 @@
-using DriveX.Data;
 using DriveX.DTOs;
 using DriveX.DTOs.Cars;
-using DriveX.DTOs.Companies;
 using DriveX.Enums;
 using DriveX.Exceptions;
 using DriveX.Mapping;
 using DriveX.Models;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 
 namespace DriveX.Services;
 
 public class CarService : ICarService
 {
-    private readonly DriveXDbContext _db;
+    private readonly ICarRepository _cars;
+    private readonly ICompanyRepository _companies;
 
-    public CarService(DriveXDbContext db)
+    public CarService(ICarRepository cars, ICompanyRepository companies)
     {
-        _db = db;
+        _cars = cars;
+        _companies = companies;
     }
 
     public async Task<CarResultResponse> AddCarAsync(AddCarRequest request)
@@ -24,12 +24,12 @@ public class CarService : ICarService
         var modelName = request.ModelName.Trim();
         var companyName = request.CompanyName.Trim();
 
-        if (await _db.Cars.AnyAsync(c => c.ModelName == modelName))
+        if (await _cars.ExistsByModelNameAsync(modelName))
         {
             throw new AppException("Car already exists");
         }
 
-        var company = await _db.Companies.FirstOrDefaultAsync(c => c.CompanyName == companyName)
+        var company = await _companies.GetByNameAsync(companyName)
             ?? throw new AppException("Company not found");
 
         var car = new Car
@@ -45,15 +45,9 @@ public class CarService : ICarService
             IsActive = true
         };
 
-        _db.Cars.Add(car);
-
-        try
+        // The unique index on model_name also protects against two saves at the same moment.
+        if (!await _cars.AddAsync(car))
         {
-            await _db.SaveChangesAsync();
-        }
-        catch (DbUpdateException)
-        {
-            // The database has a unique index on model_name; this covers two saves at the same moment.
             throw new AppException("Car already exists");
         }
 
@@ -62,7 +56,7 @@ public class CarService : ICarService
 
     public async Task<CarResultResponse> UpdateCarAsync(long carId, UpdateCarRequest request)
     {
-        var car = await _db.Cars.Include(c => c.Company).FirstOrDefaultAsync(c => c.CarId == carId)
+        var car = await _cars.GetByIdAsync(carId)
             ?? throw new AppException("Car not found");
 
         car.PricePerHour = request.PricePerHour!.Value;
@@ -72,7 +66,7 @@ public class CarService : ICarService
         car.ImageUrl = request.ImageUrl.Trim();
         car.Tag = CleanTag(request.Tag);
 
-        await _db.SaveChangesAsync();
+        await _cars.UpdateAsync(car);
 
         return new CarResultResponse("Car updated successfully", car.ToResponse());
     }
@@ -80,12 +74,7 @@ public class CarService : ICarService
     // Customers only see active cars of active companies (same as Spring).
     public async Task<List<CarResponse>> GetActiveCarsAsync()
     {
-        var cars = await _db.Cars
-            .AsNoTracking()
-            .Include(c => c.Company)
-            .Where(c => c.IsActive && c.Company.IsActive)
-            .OrderBy(c => c.CarId)
-            .ToListAsync();
+        var cars = await _cars.GetActiveAsync();
 
         return cars.Select(x => x.ToResponse()).ToList();
     }
@@ -93,12 +82,7 @@ public class CarService : ICarService
     // Cars that are in maintenance, active or not. The admin "car active status" page lists these.
     public async Task<List<CarResponse>> GetMaintenanceCarsAsync()
     {
-        var cars = await _db.Cars
-            .AsNoTracking()
-            .Include(c => c.Company)
-            .Where(c => c.RentalStatus == RentalStatus.MAINTENANCE)
-            .OrderBy(c => c.CarId)
-            .ToListAsync();
+        var cars = await _cars.GetMaintenanceAsync();
 
         return cars.Select(x => x.ToResponse()).ToList();
     }
@@ -107,11 +91,11 @@ public class CarService : ICarService
     {
         var carId = request.CarId!.Value;
 
-        var car = await _db.Cars.FirstOrDefaultAsync(c => c.CarId == carId)
+        var car = await _cars.GetByIdAsync(carId)
             ?? throw new AppException("Car not found");
 
         car.RentalStatus = request.RentalStatus!.Value;
-        await _db.SaveChangesAsync();
+        await _cars.UpdateAsync(car);
 
         return new MessageResponse("Car rental status updated successfully");
     }
@@ -119,11 +103,11 @@ public class CarService : ICarService
     // Used when a returned car is submitted: the car goes to maintenance.
     public async Task<MessageResponse> MarkAsMaintenanceAsync(long carId)
     {
-        var car = await _db.Cars.FirstOrDefaultAsync(c => c.CarId == carId)
+        var car = await _cars.GetByIdAsync(carId)
             ?? throw new AppException("Car not found");
 
         car.RentalStatus = RentalStatus.MAINTENANCE;
-        await _db.SaveChangesAsync();
+        await _cars.UpdateAsync(car);
 
         return new MessageResponse("Car rental status updated successfully");
     }
@@ -133,11 +117,11 @@ public class CarService : ICarService
     {
         var modelName = request.ModelName.Trim();
 
-        var car = await _db.Cars.Include(c => c.Company).FirstOrDefaultAsync(c => c.ModelName == modelName)
+        var car = await _cars.GetByModelNameAsync(modelName)
             ?? throw new AppException("Car not found");
 
         car.IsActive = request.IsActive!.Value;
-        await _db.SaveChangesAsync();
+        await _cars.UpdateAsync(car);
 
         return new CarResultResponse("Car updated successfully", car.ToResponse());
     }
