@@ -1,6 +1,4 @@
-using DriveX.Data;
-using DriveX.Enums;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 
 namespace DriveX.Services;
 
@@ -50,16 +48,12 @@ public class PendingPaymentCleanupService : BackgroundService
         {
             // A background service lives forever, but the DbContext must not, so each run gets its own.
             using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<DriveXDbContext>();
+            var payments = scope.ServiceProvider.GetRequiredService<IPaymentRepository>();
 
             var cutoff = DateTime.Now - AbandonedAfter; // payment_time is stored in local time
 
             // Only payments that went through the gateway have a transaction id. Nothing else is touched.
-            var changed = await db.Payments
-                .Where(p => p.PaymentStatus == PaymentStatus.PENDING
-                            && p.TransactionId != null
-                            && p.PaymentTime < cutoff)
-                .ExecuteUpdateAsync(s => s.SetProperty(p => p.PaymentStatus, PaymentStatus.FAILED), stoppingToken);
+            var changed = await payments.MarkAbandonedPendingAsFailedAsync(cutoff);
 
             if (changed > 0)
             {

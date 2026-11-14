@@ -1,29 +1,37 @@
-using DriveX.Data;
 using DriveX.DTOs.Payments;
 using DriveX.Enums;
 using DriveX.Exceptions;
 using DriveX.Mapping;
 using DriveX.Models;
 using DriveX.Options;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 using Microsoft.Extensions.Options;
 
 namespace DriveX.Services;
 
 public class PaymentService : IPaymentService
 {
-    private readonly DriveXDbContext _db;
+    private readonly IPaymentRepository _payments;
+    private readonly IUserRepository _users;
+    private readonly ICarRepository _cars;
+    private readonly IBookingRepository _bookings;
     private readonly ISslCommerzClient _sslCommerz;
     private readonly SslCommerzSettings _sslCommerzSettings;
     private readonly ILogger<PaymentService> _logger;
 
     public PaymentService(
-        DriveXDbContext db,
+        IPaymentRepository payments,
+        IUserRepository users,
+        ICarRepository cars,
+        IBookingRepository bookings,
         ISslCommerzClient sslCommerz,
         IOptions<SslCommerzSettings> sslCommerzSettings,
         ILogger<PaymentService> logger)
     {
-        _db = db;
+        _payments = payments;
+        _users = users;
+        _cars = cars;
+        _bookings = bookings;
         _sslCommerz = sslCommerz;
         _sslCommerzSettings = sslCommerzSettings.Value;
         _logger = logger;
@@ -40,13 +48,12 @@ public class PaymentService : IPaymentService
             throw new AppException("Minimum rental is 1 hour");
         }
 
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId)
+        var user = await _users.GetDetailsByIdAsync(userId)
                    ?? throw new AppException($"User {userId} not found");
 
         var carId = request.CarId!.Value;
 
-        var car = await _db.Cars.AsNoTracking().Include(c => c.Company)
-                      .FirstOrDefaultAsync(c => c.CarId == carId)
+        var car = await _cars.GetDetailsByIdAsync(carId)
                   ?? throw new AppException($"Car {carId} not found");
 
         CityRule.EnsureCustomerIsInCarCity(request.City, car.Company.CompanyCity);
@@ -102,10 +109,7 @@ public class PaymentService : IPaymentService
 
         var bookingId = request.BookingId!.Value;
 
-        var booking = await _db.Bookings.AsNoTracking()
-                          .Include(b => b.Car).ThenInclude(c => c.Company)
-                          .Include(b => b.User)
-                          .FirstOrDefaultAsync(b => b.BookingId == bookingId)
+        var booking = await _bookings.GetDetailsByIdAsync(bookingId)
                       ?? throw new AppException($"Booking {bookingId} not found");
 
         var fine = FineCalculator.Calculate(booking, DateTime.Now);
@@ -146,8 +150,7 @@ public class PaymentService : IPaymentService
     // Saves the payment as PENDING, then asks SSLCommerz for the payment page.
     private async Task<StartPaymentResponse> SavePendingAndStartAsync(Payment payment, SslCommerzInitRequest init)
     {
-        _db.Payments.Add(payment);
-        await _db.SaveChangesAsync();
+        await _payments.AddAsync(payment);
 
         try
         {
@@ -158,7 +161,7 @@ public class PaymentService : IPaymentService
         {
             // The gateway never opened a payment page, so this payment can not be completed.
             payment.PaymentStatus = PaymentStatus.FAILED;
-            await _db.SaveChangesAsync();
+            await _payments.UpdateAsync(payment);
             throw;
         }
     }
@@ -174,7 +177,7 @@ public class PaymentService : IPaymentService
             return new GatewayPaymentOutcome(false, null);
         }
 
-        var payment = await _db.Payments.FirstOrDefaultAsync(p => p.TransactionId == transactionId);
+        var payment = await _payments.GetByTransactionIdAsync(transactionId);
 
         if (payment is null)
         {
@@ -205,7 +208,7 @@ public class PaymentService : IPaymentService
 
         payment.PaymentStatus = PaymentStatus.DONE;
         payment.PaymentTime = DateTime.Now;
-        await _db.SaveChangesAsync();
+        await _payments.UpdateAsync(payment);
 
         return new GatewayPaymentOutcome(true, payment.PaymentId);
     }

@@ -1,9 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using DriveX.Data;
 using DriveX.Enums;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 
 namespace DriveX.Services;
 
@@ -16,11 +15,15 @@ public class AnalystTools
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private readonly DriveXDbContext _db;
+    private readonly ICarRepository _cars;
+    private readonly IBookingRepository _bookings;
+    private readonly IPaymentRepository _payments;
 
-    public AnalystTools(DriveXDbContext db)
+    public AnalystTools(ICarRepository cars, IBookingRepository bookings, IPaymentRepository payments)
     {
-        _db = db;
+        _cars = cars;
+        _bookings = bookings;
+        _payments = payments;
     }
 
     // What the AI is told about the tools (Gemini "function declarations").
@@ -95,28 +98,14 @@ public class AnalystTools
 
     private async Task<object> FleetStatusAsync()
     {
-        var cars = await _db.Cars.AsNoTracking()
-            .OrderBy(c => c.CarId)
-            .Select(c => new
-            {
-                c.CarId,
-                c.ModelName,
-                Company = c.Company.CompanyName,
-                City = c.Company.CompanyCity,
-                c.PricePerHour,
-                c.Seats,
-                c.Fuel,
-                c.RentalStatus,
-                c.IsActive
-            })
-            .ToListAsync();
+        var cars = await _cars.GetAllWithCompanyAsync();
 
         var rows = cars.Select(c => new
         {
             c.CarId,
             c.ModelName,
-            c.Company,
-            c.City,
+            Company = c.Company.CompanyName,
+            City = c.Company.CompanyCity,
             c.PricePerHour,
             c.Seats,
             Fuel = c.Fuel.ToString(),
@@ -144,41 +133,19 @@ public class AnalystTools
         var statusText = Arg(args, "status");
         var carModel = Arg(args, "car_model");
 
-        var query = _db.Bookings.AsNoTracking()
-            .Where(b => b.BookingTime >= start && b.BookingTime < endExclusive);
+        BookingStatus? status = null;
 
         if (!string.IsNullOrWhiteSpace(statusText))
         {
-            if (!Enum.TryParse<BookingStatus>(statusText, ignoreCase: true, out var status))
+            if (!Enum.TryParse<BookingStatus>(statusText, ignoreCase: true, out var parsed))
             {
                 return new { error = "status must be NOT_DELIVERED, ONGOING or SUBMITTED" };
             }
 
-            query = query.Where(b => b.BookingStatus == status);
+            status = parsed;
         }
 
-        if (!string.IsNullOrWhiteSpace(carModel))
-        {
-            query = query.Where(b => b.Car.ModelName.Contains(carModel));
-        }
-
-        var total = await query.CountAsync();
-
-        var rows = await query
-            .OrderByDescending(b => b.BookingTime)
-            .Take(MaxRows)
-            .Select(b => new
-            {
-                b.BookingId,
-                CarModel = b.Car.ModelName,
-                b.BookingStatus,
-                b.BookingTime,
-                b.RentStart,
-                b.RentEnd,
-                b.TotalHours,
-                b.TotalPrice
-            })
-            .ToListAsync();
+        var (total, rows) = await _bookings.SearchAsync(start, endExclusive, status, carModel, MaxRows);
 
         return new
         {
@@ -189,7 +156,7 @@ public class AnalystTools
             bookings = rows.Select(b => new
             {
                 b.BookingId,
-                b.CarModel,
+                CarModel = b.Car.ModelName,
                 Status = b.BookingStatus?.ToString(),
                 b.BookingTime,
                 b.RentStart,
@@ -204,10 +171,7 @@ public class AnalystTools
     {
         var now = DateTime.Now;
 
-        var ongoing = await _db.Bookings.AsNoTracking()
-            .Where(b => b.BookingStatus == BookingStatus.ONGOING && b.RentStart != null)
-            .OrderBy(b => b.BookingId)
-            .Take(MaxFetch)
+        var ongoing = (await _bookings.GetOngoingStartedAsync(MaxFetch))
             .Select(b => new
             {
                 b.BookingId,
@@ -216,7 +180,7 @@ public class AnalystTools
                 RentStart = b.RentStart!.Value,
                 b.TotalHours
             })
-            .ToListAsync();
+            .ToList();
 
         var rows = ongoing.Select(b =>
         {
@@ -257,12 +221,9 @@ public class AnalystTools
     {
         var (start, endExclusive) = DateRange(args);
 
-        var payments = await _db.Payments.AsNoTracking()
-            .Where(p => p.PaymentStatus == PaymentStatus.DONE && p.PaymentTime >= start && p.PaymentTime < endExclusive)
-            .OrderBy(p => p.PaymentId)
-            .Take(MaxFetch)
+        var payments = (await _payments.GetDoneInRangeAsync(start, endExclusive, MaxFetch))
             .Select(p => new { p.PaymentType, p.TotalAmount, CarModel = p.Car.ModelName })
-            .ToListAsync();
+            .ToList();
 
         var rental = payments.Where(p => p.PaymentType == PaymentType.RENTED_PRICE).Sum(p => p.TotalAmount);
         var fines = payments.Where(p => p.PaymentType == PaymentType.FINE).Sum(p => p.TotalAmount);
@@ -297,18 +258,14 @@ public class AnalystTools
     {
         var (start, endExclusive) = DateRange(args);
 
-        var cars = await _db.Cars.AsNoTracking()
+        var cars = (await _cars.GetAllWithCompanyAsync())
             .Where(c => c.IsActive)
-            .OrderBy(c => c.CarId)
             .Select(c => new { c.ModelName, c.PricePerHour, c.RentalStatus })
-            .ToListAsync();
+            .ToList();
 
-        var bookings = await _db.Bookings.AsNoTracking()
-            .Where(b => b.BookingTime >= start && b.BookingTime < endExclusive)
-            .OrderBy(b => b.BookingId)
-            .Take(MaxFetch)
+        var bookings = (await _bookings.GetByBookingTimeAsync(start, endExclusive, MaxFetch))
             .Select(b => new { CarModel = b.Car.ModelName, b.TotalHours, b.TotalPrice })
-            .ToListAsync();
+            .ToList();
 
         var byModel = bookings.GroupBy(b => b.CarModel).ToDictionary(g => g.Key, g => g.ToList());
 

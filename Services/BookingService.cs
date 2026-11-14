@@ -1,24 +1,38 @@
-using DriveX.Data;
 using DriveX.DTOs.Bookings;
 using DriveX.DTOs.Cars;
 using DriveX.Enums;
 using DriveX.Exceptions;
 using DriveX.Mapping;
 using DriveX.Models;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace DriveX.Services;
 
 public class BookingService : IBookingService
 {
-    private readonly DriveXDbContext _db;
+    private readonly IBookingRepository _bookings;
+    private readonly ICarRepository _cars;
+    private readonly IPaymentRepository _payments;
+    private readonly IUserRepository _users;
+    private readonly ISubmissionRepository _submissions;
     private readonly IEmailService _emailService;
     private readonly ILogger<BookingService> _logger;
 
-    public BookingService(DriveXDbContext db, IEmailService emailService, ILogger<BookingService> logger)
+    public BookingService(
+        IBookingRepository bookings,
+        ICarRepository cars,
+        IPaymentRepository payments,
+        IUserRepository users,
+        ISubmissionRepository submissions,
+        IEmailService emailService,
+        ILogger<BookingService> logger)
     {
-        _db = db;
+        _bookings = bookings;
+        _cars = cars;
+        _payments = payments;
+        _users = users;
+        _submissions = submissions;
         _emailService = emailService;
         _logger = logger;
     }
@@ -37,8 +51,7 @@ public class BookingService : IBookingService
         var carId = request.CarId!.Value;
         var paymentId = request.PaymentId!.Value;
 
-        var car = await _db.Cars.AsNoTracking().Include(c => c.Company)
-                      .FirstOrDefaultAsync(c => c.CarId == carId)
+        var car = await _cars.GetDetailsByIdAsync(carId)
                   ?? throw new AppException($"Car {carId} not found");
 
         if (!car.IsActive || !car.Company.IsActive)
@@ -48,7 +61,7 @@ public class BookingService : IBookingService
 
         CityRule.EnsureCustomerIsInCarCity(request.City, car.Company.CompanyCity);
 
-        var payment = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.PaymentId == paymentId)
+        var payment = await _payments.GetDetailsByIdAsync(paymentId)
                       ?? throw new AppException($"Payment {paymentId} not found");
 
         // The payment must be this customer's rental payment for this same car.
@@ -69,7 +82,7 @@ public class BookingService : IBookingService
             throw new AppException("Payment was not made through the payment gateway");
         }
 
-        if (await _db.Bookings.AnyAsync(b => b.PaymentId == paymentId))
+        if (await _bookings.ExistsByPaymentIdAsync(paymentId))
         {
             throw new AppException("Payment is already used for a booking");
         }
@@ -88,19 +101,6 @@ public class BookingService : IBookingService
             throw new AppException("Payment amount does not match the booking price");
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync();
-
-        // Marks the car RENTED only if it is still AVAILABLE, in one atomic UPDATE.
-        // If two customers book the same car at the same moment, only one UPDATE changes a row.
-        var carsUpdated = await _db.Cars
-            .Where(c => c.CarId == carId && c.RentalStatus == RentalStatus.AVAILABLE)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.RentalStatus, RentalStatus.RENTED));
-
-        if (carsUpdated == 0)
-        {
-            throw new AppException("Car is not available");
-        }
-
         var booking = new Booking
         {
             UserId = userId,
@@ -116,27 +116,22 @@ public class BookingService : IBookingService
             BookingStatus = BookingStatus.NOT_DELIVERED
         };
 
-        _db.Bookings.Add(booking);
+        // Marks the car RENTED and saves the booking together (one transaction inside the repository).
+        var result = await _bookings.CreateWithCarRentedAsync(booking);
 
-        try
+        if (result == BookingCreateResult.CarNotAvailable)
         {
-            await _db.SaveChangesAsync();
+            throw new AppException("Car is not available");
         }
-        catch (DbUpdateException)
+
+        if (result == BookingCreateResult.PaymentAlreadyUsed)
         {
-            // payment_id is unique in the bookings table; this covers a double click.
             throw new AppException("Payment is already used for a booking");
         }
 
-        await transaction.CommitAsync();
-
         // Read it back with its relations so the response shows the real stored state (car RENTED).
-        var saved = await _db.Bookings
-            .AsNoTracking()
-            .Include(b => b.User)
-            .Include(b => b.Payment)
-            .Include(b => b.Car).ThenInclude(c => c.Company)
-            .FirstAsync(b => b.BookingId == booking.BookingId);
+        var saved = await _bookings.GetDetailsByIdAsync(booking.BookingId)
+                    ?? throw new AppException("Booking not found");
 
         return new BookingResultResponse("Successfully booked", saved.ToResponse());
     }
@@ -146,19 +141,12 @@ public class BookingService : IBookingService
     {
         var cleanEmail = email.Trim();
 
-        if (!await _db.Users.AnyAsync(u => u.Email == cleanEmail))
+        if (!await _users.ExistsByEmailAsync(cleanEmail))
         {
             throw new AppException("User not found");
         }
 
-        var bookings = await _db.Bookings
-            .AsNoTracking()
-            .Include(b => b.User)
-            .Include(b => b.Payment)
-            .Include(b => b.Car).ThenInclude(c => c.Company)
-            .Where(b => b.User.Email == cleanEmail)
-            .OrderBy(b => b.BookingId)
-            .ToListAsync();
+        var bookings = await _bookings.GetByEmailAsync(cleanEmail);
 
         return bookings.Select(b => b.ToResponse()).ToList();
     }
@@ -175,12 +163,7 @@ public class BookingService : IBookingService
 
     private async Task<List<CarResponse>> GetCarsWithBookingStatusAsync(BookingStatus status)
     {
-        var cars = await _db.Cars
-            .AsNoTracking()
-            .Include(c => c.Company)
-            .Where(c => _db.Bookings.Any(b => b.CarId == c.CarId && b.BookingStatus == status))
-            .OrderBy(c => c.CarId)
-            .ToListAsync();
+        var cars = await _cars.GetByBookingStatusAsync(status);
 
         return cars.Select(c => c.ToResponse()).ToList();
     }
@@ -190,12 +173,8 @@ public class BookingService : IBookingService
     {
         var cleanName = modelName.Trim();
 
-        var booking = await BookingsWithRelations()
-            .AsNoTracking()
-            .Where(b => b.Car.ModelName == cleanName && b.BookingStatus == BookingStatus.NOT_DELIVERED)
-            .OrderBy(b => b.BookingId)
-            .FirstOrDefaultAsync()
-            ?? throw new AppException("No undelivered booking found for this car");
+        var booking = await _bookings.GetFirstByModelNameAndStatusAsync(cleanName, BookingStatus.NOT_DELIVERED)
+                      ?? throw new AppException("No undelivered booking found for this car");
 
         return booking.ToResponse();
     }
@@ -203,7 +182,7 @@ public class BookingService : IBookingService
     // Staff hand the car over: the rental clock starts now and the customer gets an email.
     public async Task<BookingResponse> StartRentAsync(long bookingId)
     {
-        var booking = await BookingsWithRelations().FirstOrDefaultAsync(b => b.BookingId == bookingId)
+        var booking = await _bookings.GetByIdAsync(bookingId)
                       ?? throw new AppException("Booking not found");
 
         // Without this check, pressing start a second time would reset the start time.
@@ -216,7 +195,7 @@ public class BookingService : IBookingService
         booking.Toggle = true;
         booking.BookingStatus = BookingStatus.ONGOING;
 
-        await _db.SaveChangesAsync();
+        await _bookings.UpdateAsync(booking);
 
         await TrySendRentStartedEmailAsync(booking);
 
@@ -226,7 +205,7 @@ public class BookingService : IBookingService
     // Staff mark the rental time as finished. The booking stays ONGOING until the car is submitted.
     public async Task<BookingResponse> EndRentAsync(long bookingId)
     {
-        var booking = await BookingsWithRelations().FirstOrDefaultAsync(b => b.BookingId == bookingId)
+        var booking = await _bookings.GetByIdAsync(bookingId)
                       ?? throw new AppException("Booking not found");
 
         if (booking.BookingStatus != BookingStatus.ONGOING || !booking.Toggle)
@@ -237,31 +216,23 @@ public class BookingService : IBookingService
         booking.RentEnd = DateTime.Now;
         booking.Toggle = false;
 
-        await _db.SaveChangesAsync();
+        await _bookings.UpdateAsync(booking);
 
         return booking.ToResponse();
     }
 
-    private IQueryable<Booking> BookingsWithRelations() =>
-        _db.Bookings
-            .Include(b => b.User)
-            .Include(b => b.Payment)
-            .Include(b => b.Car).ThenInclude(c => c.Company);
-
-    // The rental is already saved at this point. If the mail server is down, staff should not see
-    // an error for a rental that did start, so a failed email is only written to the log.
     // The staff screen asks for the fine before returning a car. Same rule is reused when the fine is paid.
     public async Task<FineResponse> GetFineAsync(long bookingId)
     {
-        var booking = await _db.Bookings.AsNoTracking()
-                          .Include(b => b.Car)
-                          .FirstOrDefaultAsync(b => b.BookingId == bookingId)
+        var booking = await _bookings.GetDetailsByIdAsync(bookingId)
                       ?? throw new AppException($"Booking {bookingId} not found");
 
         // The calculator refuses a booking that is not out on rent.
         return FineCalculator.Calculate(booking, DateTime.Now); // local time, like RentStart
     }
 
+    // The rental is already saved at this point. If the mail server is down, staff should not see
+    // an error for a rental that did start, so a failed email is only written to the log.
     private async Task TrySendRentStartedEmailAsync(Booking booking)
     {
         try
@@ -281,11 +252,7 @@ public class BookingService : IBookingService
     // The running booking of one car. The staff "submit car" page needs it for the return time and the fine.
     public async Task<BookingResponse> GetOngoingBookingOfCarAsync(long carId)
     {
-        var booking = await BookingsWithRelations()
-                          .AsNoTracking()
-                          .Where(b => b.CarId == carId && b.BookingStatus == BookingStatus.ONGOING)
-                          .OrderBy(b => b.BookingId)
-                          .FirstOrDefaultAsync()
+        var booking = await _bookings.GetFirstByCarIdAndStatusAsync(carId, BookingStatus.ONGOING)
                       ?? throw new AppException("No ongoing booking found for this car");
 
         return booking.ToResponse();
@@ -294,7 +261,7 @@ public class BookingService : IBookingService
     // Last step of a return: the booking is closed as SUBMITTED. It needs the submission record first.
     public async Task<BookingResponse> MarkSubmittedAsync(long bookingId)
     {
-        var booking = await BookingsWithRelations().FirstOrDefaultAsync(b => b.BookingId == bookingId)
+        var booking = await _bookings.GetByIdAsync(bookingId)
                       ?? throw new AppException("Booking not found");
 
         if (booking.BookingStatus != BookingStatus.ONGOING)
@@ -302,13 +269,13 @@ public class BookingService : IBookingService
             throw new AppException("Booking is not ongoing");
         }
 
-        if (!await _db.Submissions.AnyAsync(s => s.BookingId == bookingId))
+        if (!await _submissions.ExistsByBookingIdAsync(bookingId))
         {
             throw new AppException("Submit the car before closing the booking");
         }
 
         booking.BookingStatus = BookingStatus.SUBMITTED;
-        await _db.SaveChangesAsync();
+        await _bookings.UpdateAsync(booking);
 
         return booking.ToResponse();
     }
@@ -320,11 +287,7 @@ public class BookingService : IBookingService
     {
         var cleanName = modelName.Trim();
 
-        var booking = await BookingsWithRelations()
-            .AsNoTracking()
-            .Where(b => b.Car.ModelName == cleanName && b.BookingStatus == BookingStatus.ONGOING)
-            .OrderBy(b => b.BookingId)
-            .FirstOrDefaultAsync();
+        var booking = await _bookings.GetFirstByModelNameAndStatusAsync(cleanName, BookingStatus.ONGOING);
 
         return booking?.ToResponse();
     }

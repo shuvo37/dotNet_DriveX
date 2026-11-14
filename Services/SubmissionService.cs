@@ -1,22 +1,27 @@
-using DriveX.Data;
 using DriveX.DTOs.Submissions;
 using DriveX.Enums;
 using DriveX.Exceptions;
 using DriveX.Models;
-using Microsoft.EntityFrameworkCore;
+using DriveX.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace DriveX.Services;
 
 public class SubmissionService : ISubmissionService
 {
-    private readonly DriveXDbContext _db;
+    private readonly IBookingRepository _bookings;
+    private readonly ISubmissionRepository _submissions;
     private readonly IEmailService _emailService;
     private readonly ILogger<SubmissionService> _logger;
 
-    public SubmissionService(DriveXDbContext db, IEmailService emailService, ILogger<SubmissionService> logger)
+    public SubmissionService(
+        IBookingRepository bookings,
+        ISubmissionRepository submissions,
+        IEmailService emailService,
+        ILogger<SubmissionService> logger)
     {
-        _db = db;
+        _bookings = bookings;
+        _submissions = submissions;
         _emailService = emailService;
         _logger = logger;
     }
@@ -27,11 +32,7 @@ public class SubmissionService : ISubmissionService
     {
         var bookingId = request.BookingId!.Value;
 
-        var booking = await _db.Bookings
-                          .AsNoTracking()
-                          .Include(b => b.User)
-                          .Include(b => b.Car)
-                          .FirstOrDefaultAsync(b => b.BookingId == bookingId)
+        var booking = await _bookings.GetDetailsByIdAsync(bookingId)
                       ?? throw new AppException("Booking not found");
 
         if (booking.BookingStatus != BookingStatus.ONGOING)
@@ -46,7 +47,7 @@ public class SubmissionService : ISubmissionService
             throw new AppException("Submission details do not match the booking");
         }
 
-        if (await _db.Submissions.AnyAsync(s => s.BookingId == bookingId))
+        if (await _submissions.ExistsByBookingIdAsync(bookingId))
         {
             throw new AppException("Car already submitted for this booking");
         }
@@ -60,15 +61,9 @@ public class SubmissionService : ISubmissionService
             SubmittedAt = DateTime.Now // server time, like Java's LocalDateTime.now()
         };
 
-        _db.Submissions.Add(submission);
-
-        try
+        // The unique indexes on booking_id and payment_id also protect against a double click.
+        if (!await _submissions.AddAsync(submission))
         {
-            await _db.SaveChangesAsync();
-        }
-        catch (DbUpdateException)
-        {
-            // booking_id and payment_id are unique in the submission table; this covers a double click.
             throw new AppException("Car already submitted for this booking");
         }
 
