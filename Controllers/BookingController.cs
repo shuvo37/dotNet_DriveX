@@ -83,6 +83,14 @@ public class BookingController : ControllerBase
         return Ok(await _bookingService.GetOngoingBookingOfCarAsync(request.CarId!.Value));
     }
 
+    // The late fine, calculated here on the server. The screen only shows it.
+    [Authorize]
+    [HttpGet("{bookingId:long}/fine")]
+    public async Task<ActionResult<FineResponse>> GetFine(long bookingId)
+    {
+        return Ok(await _bookingService.GetFineAsync(bookingId));
+    }
+
     [HttpPatch("set-booking-car-submitted/{bookingId:long}")]
     public async Task<ActionResult<BookingResponse>> SetBookingCarSubmitted(long bookingId)
     {

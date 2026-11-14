@@ -15,4 +15,7 @@ public interface IBookingService
     Task<BookingResponse> GetOngoingBookingOfCarAsync(long carId);
     Task<BookingResponse> MarkSubmittedAsync(long bookingId);
     Task<BookingResponse?> SearchOngoingBookingByModelAsync(string modelName);
+
+    // The late fine for a car that is out with a customer right now.
+    Task<FineResponse> GetFineAsync(long bookingId);
 }

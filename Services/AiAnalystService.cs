@@ -176,7 +176,7 @@ public class AiAnalystService : IAiAnalystService
 
         var sb = new StringBuilder();
         sb.AppendLine("You are the business analyst of DriveX, a car rental company. You are talking to the ADMIN who runs it.");
-        sb.AppendLine($"Current date and time: {now:yyyy-MM-dd HH:mm} (local time). Money is in US dollars. Car prices are per hour.");
+        sb.AppendLine($"Current date and time: {now:yyyy-MM-dd HH:mm} (local time). Money is in Bangladeshi taka (৳). Car prices are per hour.");
         sb.AppendLine();
         sb.AppendLine("How you work:");
         sb.AppendLine("- You can read the live DriveX data ONLY through the tools you are given. Call the tools you need, and call several if the question needs it.");
@@ -192,9 +192,10 @@ public class AiAnalystService : IAiAnalystService
         sb.AppendLine("How DriveX works:");
         sb.AppendLine("- Booking status: NOT_DELIVERED (paid, car not handed over yet), ONGOING (customer has the car), SUBMITTED (car returned).");
         sb.AppendLine("- Car status: AVAILABLE, RENTED, MAINTENANCE. A car that is not active is hidden from customers.");
-        sb.AppendLine("- Customers pay with bKash or Nagad. A booking price is the car's hourly rate x total hours.");
+        sb.AppendLine("- Customers choose bKash or Nagad and pay on the SSLCommerz payment page. A booking price is the car's hourly rate x total hours.");
+        sb.AppendLine("- Payment status: DONE means the money was confirmed. PENDING (not finished) and FAILED payments are not income.");
         sb.AppendLine("- The rental clock starts when staff hand the car over. The car must be back at start time + total hours.");
-        sb.AppendLine("- Late fine: only complete late hours count. Fine = complete late hours x (hourly rate + extra), where extra = half the hourly rate rounded down, at least $1.");
+        sb.AppendLine("- Late fine: only complete late hours count. Fine = complete late hours x (hourly rate + extra), where extra = half the hourly rate rounded down, at least ৳1.");
         sb.AppendLine("- Income has two kinds: RENTED_PRICE payments (rentals) and FINE payments (late fines).");
 
         return sb.ToString();

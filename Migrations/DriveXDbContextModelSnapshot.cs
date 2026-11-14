@@ -271,6 +271,11 @@ namespace DriveX.Migrations
                         .HasColumnType("double")
                         .HasColumnName("total_amount");
 
+                    b.Property<string>("TransactionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("transaction_id");
+
                     b.Property<long>("UserId")
                         .HasColumnType("bigint")
                         .HasColumnName("user_id");
@@ -278,6 +283,9 @@ namespace DriveX.Migrations
                     b.HasKey("PaymentId");
 
                     b.HasIndex("CarId");
+
+                    b.HasIndex("TransactionId")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 

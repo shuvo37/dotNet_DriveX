@@ -57,6 +57,18 @@ public class BookingService : IBookingService
             throw new AppException("Payment does not belong to this booking");
         }
 
+        // A payment that is still PENDING (or failed) has not brought any money, so it can not buy a booking.
+        if (payment.PaymentStatus != PaymentStatus.DONE)
+        {
+            throw new AppException("Payment is not completed");
+        }
+
+        // Rental payments only come from the payment gateway, which always gives them a transaction id.
+        if (string.IsNullOrEmpty(payment.TransactionId))
+        {
+            throw new AppException("Payment was not made through the payment gateway");
+        }
+
         if (await _db.Bookings.AnyAsync(b => b.PaymentId == paymentId))
         {
             throw new AppException("Payment is already used for a booking");
@@ -238,6 +250,18 @@ public class BookingService : IBookingService
 
     // The rental is already saved at this point. If the mail server is down, staff should not see
     // an error for a rental that did start, so a failed email is only written to the log.
+    // The staff screen asks for the fine before returning a car. Same rule is reused when the fine is paid.
+    public async Task<FineResponse> GetFineAsync(long bookingId)
+    {
+        var booking = await _db.Bookings.AsNoTracking()
+                          .Include(b => b.Car)
+                          .FirstOrDefaultAsync(b => b.BookingId == bookingId)
+                      ?? throw new AppException($"Booking {bookingId} not found");
+
+        // The calculator refuses a booking that is not out on rent.
+        return FineCalculator.Calculate(booking, DateTime.Now); // local time, like RentStart
+    }
+
     private async Task TrySendRentStartedEmailAsync(Booking booking)
     {
         try

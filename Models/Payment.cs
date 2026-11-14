@@ -18,4 +18,8 @@ public class Payment
     public PaymentType PaymentType { get; set; }
     public double TotalAmount { get; set; }
     public DateTime PaymentTime { get; set; }
+
+    // Our own unique id for one gateway payment (sent to SSLCommerz as tran_id, sent back by it).
+    // Example: "DRX-7-12-A1B2C3D4". Null for old payments and for staff fine payments.
+    public string? TransactionId { get; set; }
 }
