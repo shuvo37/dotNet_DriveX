@@ -33,5 +33,9 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         builder.Property(p => p.TotalAmount).HasColumnName("total_amount");
         builder.Property(p => p.PaymentTime).HasColumnName("payment_time");
+
+        // The gateway sends this back, so a payment must be findable by it and it can not repeat.
+        builder.Property(p => p.TransactionId).HasColumnName("transaction_id").HasMaxLength(64);
+        builder.HasIndex(p => p.TransactionId).IsUnique();
     }
 }

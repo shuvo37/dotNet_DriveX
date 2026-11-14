@@ -14,6 +14,10 @@ using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// HttpClient logs every request address. The SSLCommerz validation address holds the store password,
+// so these logs are limited to warnings and errors.
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+
 // ---------- Database ----------
 // The connection string comes from user-secrets in development,
 // so the DB password never reaches GitHub.
@@ -140,6 +144,12 @@ builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gem
 builder.Services.AddHttpClient<IAiAssistantService, GeminiAssistantService>(c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddScoped<AnalystTools>();
 builder.Services.AddHttpClient<IAiAnalystService, AiAnalystService>(c => c.Timeout = TimeSpan.FromSeconds(60));
+
+builder.Services.Configure<SslCommerzSettings>(builder.Configuration.GetSection("SslCommerz"));
+builder.Services.AddHttpClient<ISslCommerzClient, SslCommerzClient>(c => c.Timeout = TimeSpan.FromSeconds(30));
+
+// Marks payments that were started but never finished as FAILED.
+builder.Services.AddHostedService<PendingPaymentCleanupService>();
 
 builder.Services
     .AddControllers(options =>

@@ -258,7 +258,7 @@ public class AnalystTools
         var (start, endExclusive) = DateRange(args);
 
         var payments = await _db.Payments.AsNoTracking()
-            .Where(p => p.PaymentTime >= start && p.PaymentTime < endExclusive)
+            .Where(p => p.PaymentStatus == PaymentStatus.DONE && p.PaymentTime >= start && p.PaymentTime < endExclusive)
             .OrderBy(p => p.PaymentId)
             .Take(MaxFetch)
             .Select(p => new { p.PaymentType, p.TotalAmount, CarModel = p.Car.ModelName })
